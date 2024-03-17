@@ -93,11 +93,11 @@ int main(int argc, char *argv[])
 	}
 
 	/* Communicated data */
-	from_left = has_left_neighbour? (double*)malloc(rows*sizeof(double)):NULL;
-	from_right = has_right_neighbour? (double*)malloc(rows*sizeof(double)):NULL;
+	from_left = has_left_neighbour? (double*)malloc(rows*sizeof(double)* width):NULL;
+	from_right = has_right_neighbour? (double*)malloc(rows*sizeof(double)* width):NULL;
 
-	from_top = has_top_neighbour? (double*)malloc(cols*sizeof(double)):NULL;
-	from_bottom = has_bottom_neighbour? (double*)malloc(cols*sizeof(double)):NULL;
+	from_top = has_top_neighbour? (double*)malloc(cols*sizeof(double)* width):NULL;
+	from_bottom = has_bottom_neighbour? (double*)malloc(cols*sizeof(double)* width):NULL;
 
 along_x_communication:
 		
@@ -108,20 +108,20 @@ along_x_communication:
 		case(0):
 			if(has_right_neighbour){
 				/* Sending to right */
-				MPI_Send(&data[i][cols-1], 1 , MPI_DOUBLE, myrank+1 , i,MPI_COMM_WORLD );
+				MPI_Send(&data[i][cols-width], width , MPI_DOUBLE, myrank+1 , i,MPI_COMM_WORLD );
 
 				/* Receiving from right*/
-				MPI_Recv(&from_right[i], 1 , MPI_DOUBLE , myrank+1 , i , MPI_COMM_WORLD, &status);
+				MPI_Recv(&from_right[i*width], width , MPI_DOUBLE , myrank+1 , i , MPI_COMM_WORLD, &status);
 			}
 			break;
 
 		case(1):
 			if(has_left_neighbour){
 				/* Receiving from left */
-				MPI_Recv(&from_left[i], 1 , MPI_DOUBLE, myrank-1 , i , MPI_COMM_WORLD, &status);
+				MPI_Recv(&from_left[i*width], width , MPI_DOUBLE, myrank-1 , i , MPI_COMM_WORLD, &status);
 
 				/* Sending to left */
-				MPI_Send(&data[i][0], 1 , MPI_DOUBLE, myrank-1 , i,MPI_COMM_WORLD );
+				MPI_Send(&data[i][0], width , MPI_DOUBLE, myrank-1 , i,MPI_COMM_WORLD );
 			}
 			break;
 		}
@@ -134,20 +134,20 @@ along_x_communication:
 		case(0):
 			if(has_left_neighbour){
 				/* Sending to left */
-				MPI_Send(&data[i][0], 1 , MPI_DOUBLE, myrank-1 , i,MPI_COMM_WORLD );
+				MPI_Send(&data[i][0], width , MPI_DOUBLE, myrank-1 , i,MPI_COMM_WORLD );
 
 				/* Receiving from left*/
-				MPI_Recv(&from_left[i], 1 , MPI_DOUBLE , myrank-1 , i , MPI_COMM_WORLD, &status);
+				MPI_Recv(&from_left[i*width], width , MPI_DOUBLE , myrank-1 , i , MPI_COMM_WORLD, &status);
 			}
 			break;
 
 		case(1):
 			if(has_right_neighbour){
 				/* Receiving from right */
-				MPI_Recv(&from_right[i], 1 , MPI_DOUBLE, myrank+1 , i , MPI_COMM_WORLD, &status);
+				MPI_Recv(&from_right[i*width], width , MPI_DOUBLE, myrank+1 , i , MPI_COMM_WORLD, &status);
 
 				/* Sending to right */
-				MPI_Send(&data[i][cols-1], 1 , MPI_DOUBLE, myrank+1 , i , MPI_COMM_WORLD);
+				MPI_Send(&data[i][cols-width], width , MPI_DOUBLE, myrank+1 , i , MPI_COMM_WORLD);
 			}
 			break;
 		}
@@ -164,52 +164,52 @@ along_y_communication:
 	 *				Py-1, bottom most
 	 *
 	 * every even-process sends to below && odd-process sends to above */
-	for(int j=0; j<cols; j++){
+	for(int j=0; j<width; j++){
 		switch( (myrank/Px) % 2 ){
 		
 		case(0):
 			if(has_bottom_neighbour){
 				/* Sending to below */
-				MPI_Send(&data[rows-1][j], 1 , MPI_DOUBLE, myrank+Px , j ,MPI_COMM_WORLD );
+				MPI_Send(&data[rows-width+j][0], cols , MPI_DOUBLE, myrank+Px , j ,MPI_COMM_WORLD );
 
 				/* Receiving from below */
-				MPI_Recv(&from_bottom[j], 1 , MPI_DOUBLE , myrank+Px , j , MPI_COMM_WORLD, &status);
+				MPI_Recv(&from_bottom[j*cols], cols , MPI_DOUBLE , myrank+Px , j , MPI_COMM_WORLD, &status);
 			}
 			break;
 
 		case(1):
 			if(has_top_neighbour){
 				/* Receiving from top */
-				MPI_Recv(&from_top[j], 1 , MPI_DOUBLE, myrank-Px , j , MPI_COMM_WORLD, &status);
+				MPI_Recv(&from_top[j*cols], cols , MPI_DOUBLE, myrank-Px , j , MPI_COMM_WORLD, &status);
 
 				/* Sending to top */
-				MPI_Send(&data[0][j], 1 , MPI_DOUBLE, myrank-Px , j , MPI_COMM_WORLD);
+				MPI_Send(&data[j][0], cols , MPI_DOUBLE, myrank-Px , j , MPI_COMM_WORLD);
 			}
 			break;
 		}
 	}
 
 	/* every even-process sends to top && odd-process sends to below*/
-	for(int j=0; j<cols; j++){
+	for(int j=0; j<width; j++){
 		switch( (myrank/Px) % 2 ){
 		
 		case(0):
 			if(has_top_neighbour){
 				/* Sending to top */
-				MPI_Send(&data[0][j], 1 , MPI_DOUBLE, myrank-Px , j ,MPI_COMM_WORLD );
+				MPI_Send(&data[j][0], cols , MPI_DOUBLE, myrank-Px , j ,MPI_COMM_WORLD );
 
 				/* Receiving from top */
-				MPI_Recv(&from_bottom[j], 1 , MPI_DOUBLE , myrank-Px , j , MPI_COMM_WORLD, &status);
+				MPI_Recv(&from_bottom[j*cols], cols , MPI_DOUBLE , myrank-Px , j , MPI_COMM_WORLD, &status);
 			}
 			break;
 
 		case(1):
 			if(has_bottom_neighbour){
 				/* Receiving from below */
-				MPI_Recv(&from_bottom[j], 1 , MPI_DOUBLE, myrank+Px , j , MPI_COMM_WORLD, &status);
+				MPI_Recv(&from_bottom[j*cols], cols , MPI_DOUBLE, myrank+Px , j , MPI_COMM_WORLD, &status);
 
 				/* Sending to below */
-				MPI_Send(&data[rows-1][j], 1 , MPI_DOUBLE, myrank+Px , j , MPI_COMM_WORLD);
+				MPI_Send(&data[rows-width+j][0], cols , MPI_DOUBLE, myrank+Px , j , MPI_COMM_WORLD);
 			}
 			break;
 		}

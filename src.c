@@ -3,9 +3,44 @@
 #include <stdlib.h>
 #include <math.h>
 
+int cols,rows,Px,Py,myrank;
+double** data;
+
+
+
+bool    has_left_neighbour = true,
+        has_right_neighbour = true,
+        has_top_neighbour = true,
+        has_bottom_neighbour = true;
+
+void fill_has_neighbours()
+{
+    if(myrank%Px == 0) 					// 0, 3, 6, 9
+        has_left_neighbour = false;
+    if(myrank%Px == Px - 1) 			// 2, 5, 8, 11
+        has_right_neighbour = false;
+        
+    if(myrank/Px == 0) 					// 0, 1, 2
+        has_top_neighbour = false;
+    if(myrank/Px == Py - 1) 			// 9, 10, 11
+        has_bottom_neighbour = false;
+}
+
+int get_nneighbours(int i, int j, data)
+{
+    int nneighbours = 4;
+    if(i == 0 && !has_top_neighbour)
+        nneighbours--;
+    if(i == rows - 1 && !has_bottom_neighbour)
+        nneighbours--;
+    if(j == 0 && !has_left_neighbour)
+        nneighbours--;
+    if(j == cols - 1 && !has_right_neighbour)
+        nneighbours--;
+    return nneighbours;
+}
 int main(int argc, char *argv[]) 
 {
-	int myrank,size;
 	// initialize MPI
 	MPI_Init (&argc, &argv);
 	
@@ -14,14 +49,17 @@ int main(int argc, char *argv[])
 	MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
 	MPI_Comm_size(MPI_COMM_WORLD, &size);
 
+	fill_has_neighbours();
+
   	/* Command line arguments */
-	int Px = 3, Py = 4, P = 12;
+	Px = 3, Py = 4;
+	P = 12;
 	int N = 512*512;
 	int stencil = 5; // or 9
 	int num_time_steps = 5; 
 	int seed = 42;
 
-	int rows = sqrt(N), cols = rows;
+	rows = sqrt(N), cols = rows;
 	
 
 	double** data = (double **)malloc(rows*sizeof(double*));
@@ -39,11 +77,11 @@ int main(int argc, char *argv[])
 
 	//printf("ex: %f,%f\n",data[56][89],data[464][46]);
 	/* Communicated data */
-	double from_left[rows];
-	double from_right[rows];
+	from_left = has_left_neighbour? (double*)malloc(rows*sizeof(double)):NULL;
+	from_right = has_right_neighbour? (double*)malloc(rows*sizeof(double)):NULL;
 
-	double from_top[cols];
-	double from_bottom[cols];
+	from_top = has_top_neighbour? (double*)malloc(cols*sizeof(double)):NULL;
+	from_bottom = has_bottom_neighbour? (double*)malloc(cols*sizeof(double)):NULL;
 
 
 along_x_communication:
@@ -163,10 +201,25 @@ along_y_communication:
 	}
 
 	
-	/* */
+stencil_computation:
 
 	
+	int row_parity = rank/Px; /* {0,1,2,...,Py-1} */
+	int col_parity = rank%Px; /* {0,1,...,Px-1} */
+
+	for(int i=0; i<rows; i++){
+		for(int j=0; j<cols; j++){
+			if(i>0 && i<rows-1 && j>0 && )
+		}
+	}
 	
+
+
+
+
+
+
+
   	// done with MPI
   	MPI_Finalize();
 	return 0;

@@ -54,7 +54,7 @@ void compute(int i, int j)
 		else
         	nneighbours--;
 	}
-	data[i][j] = (data[i][j] + get_val(i, j - 1) + get_val(i, j + 1) + get_val(i - 1, j) + get_val(i + 1, j))/(nneighbours + 1);
+	data[i][j] = (data[i][j] + sum + get_val(i, j - 1) + get_val(i, j + 1) + get_val(i - 1, j) + get_val(i + 1, j))/(nneighbours + 1);
 }
 
 int main(int argc, char *argv[]) 

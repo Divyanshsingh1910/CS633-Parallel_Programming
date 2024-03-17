@@ -66,7 +66,6 @@ int main(int argc, char *argv[])
 
 	MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
 
-	fill_has_neighbours();
 
   	/* Command line arguments */
 	Px = 3, Py = 4;
@@ -78,6 +77,7 @@ int main(int argc, char *argv[])
 
 	rows = sqrt(N), cols = rows;
 	
+	fill_has_neighbours();
 
 	data = (double **)malloc(rows*sizeof(double*));
 	

@@ -3,16 +3,17 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <math.h>
+#include <unistd.h>
 
 int 	cols,	/* number of columns in the matrix */
 		rows,	/* number of rows in the matrix */
-		P,		/* total number of processes = Px*Py */
-		Px,
-		Py,
-		width,  /* halo region width = stencil/4 */
+		Px,		/* number of processes involved in decomposition along x-axis */
+		Py,		/* number of processes involved in decomposition along y-axis */
+		width,	/* halo region width = stencil/4 */
 		myrank;	/* rank of the current process */
 
-double	**data = NULL; /* the matrix containing data */
+double	**data = NULL,	/* the matrix containing data */
+		**temp = NULL; 	/* to temporarily store new values after computation */
 
 bool    has_left_neighbour = true,		/* whether there exists left neighbour */
 		has_right_neighbour = true,		/* whether there exists right neighbour */
@@ -28,6 +29,23 @@ double	*to_left = NULL,		/* data sent to left neighbour*/
 		*to_right = NULL,		/* data sent to right neighbour*/
 		*to_top = NULL,			/* data sent to top neighbour*/
 		*to_bottom = NULL;		/* data sent to bottom neighbour*/
+
+void swap(double ***a, double ***b)
+{
+	double **c = *a;
+	*a = *b;
+	*b = c;
+}
+
+/* used for debugging */
+void print_data()
+{
+	for(int i = 0; i < rows; i++){
+		for(int j = 0; j < cols; j++)
+			printf("%d: %lf ", myrank, data[i][j]);
+		printf("\n");
+	}
+}
 
 void fill_has_neighbours()
 {
@@ -54,37 +72,33 @@ void compute(int i, int j)
     double sum_neighbours = 0;
 	int nneighbours = 4;
     
-	if(j == 0){
+	if(j == 0)
 		if(has_left_neighbour)
 			for(int _ = 0; _ < width; _++)
 				sum_neighbours += from_left[i + _*rows];
 		else
         	nneighbours--;
-	}
 	
-	if(j == cols - 1){
+	if(j == cols - 1)
 		if(has_right_neighbour)
 			for(int _ = 0; _ < width; _++)
 				sum_neighbours += from_right[i + _*rows];
 		else
         	nneighbours--;
-	}
-
-	if(i == 0){
+	
+	if(i == 0)
 		if(has_top_neighbour)
 			for(int _ = 0; _ < width; _++)
 				sum_neighbours += from_top[j + _*cols];
 		else
 			nneighbours--;
-    }
-    
-	if(i == rows - 1){
+
+	if(i == rows - 1)
 		if(has_bottom_neighbour)
 			for(int _ = 0; _ < width; _++)
 				sum_neighbours += from_bottom[j + _*cols];
         else
 			nneighbours--;
-	}
 
    	for(int _ = 1; _ <= width; _++)
 		sum_neighbours += get_val(i, j - _);
@@ -98,36 +112,48 @@ void compute(int i, int j)
 	for(int _ = 1; _ <= width; _++)
 		sum_neighbours += get_val(i + _, j);
 	
-	data[i][j] = (data[i][j] + sum_neighbours)/(nneighbours + 1);
+	temp[i][j] = (data[i][j] + sum_neighbours)/(nneighbours + 1);
 }
 
 int main(int argc, char *argv[]) 
 {
+	printf("argc = %d\n", argc);
+	int N = 512*512,		/* number of data points per process */
+	P = 12,					/* total number of processes */
+	num_time_steps = 10,	/* number of steps */
+	seed = 42,
+	stencil = 5;
+	
+	Px = 3;	/* default value */	
+
+	/* all command line arguments provided */
+	if(argc == 6){
+		Px = atoi(argv[1]),
+		N = atoi(argv[2]),
+		num_time_steps = atoi(argv[3]),
+		seed = atoi(argv[4]),
+		stencil = atoi(argv[5]);
+	}
+	
+	Py = P/Px;
+	rows = cols = sqrt(N);
+	width = stencil/4;
+
 	/* initialize MPI */
 	MPI_Init (&argc, &argv);
 	MPI_Status status;
 	MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
 
-  	/* command line arguments */
-	P = 12, Px = 3;
-	Py = P/Py;
-
-	int N = 512*512,
-		stencil = 5,	/* or 9 */
-		num_time_steps = 5,
-		seed = 42;
-
-	width = stencil/4; /* halo region width */
-	rows = sqrt(N), cols = rows;
-	int position = 0;
 	
 	/* filling neighbours */
 	fill_has_neighbours();
-
-	/* allocating memory for the matrix */
+	
+	/* allocating memory for the matrices */
 	data = (double **)malloc(rows*sizeof(double*));
+	temp = (double **)malloc(rows*sizeof(double*));
 	for(int i=0; i<rows; i++){
 		data[i] = (double *)malloc(cols*sizeof(double));
+		temp[i] = (double *)malloc(cols*sizeof(double));
 	}
 
 	/* initializing the matrix with random values */
@@ -137,7 +163,9 @@ int main(int argc, char *argv[])
 			data[i][j] = abs(rand() + (i*rand() + j*myrank))/100;
 		}
 	}
+	// print_data();
 
+	int position = 0;
 	/* allocating memory for data going to send to/receive from neighbours */
 	if(has_left_neighbour){
 		from_left	= (double *)malloc(rows*width * sizeof(double));
@@ -205,7 +233,7 @@ int main(int argc, char *argv[])
 				MPI_Recv(from_left, rows*width, MPI_PACKED, myrank - 1, 0, MPI_COMM_WORLD, &status);
 
 				/* Sending to left */
-				MPI_Send(to_left, rows*width , MPI_PACKED, myrank - 1, 0, MPI_COMM_WORLD);
+				MPI_Send(to_left, rows*width, MPI_PACKED, myrank - 1, 0, MPI_COMM_WORLD);
 			}
 			break;
 	}
@@ -242,16 +270,16 @@ int main(int argc, char *argv[])
 	 * myrank/Px =
 	 *			   \
 	 *				Py-1, bottom most
-	 *
-	 * every even-process sends to below && odd-process sends to above */
-
+	 */
+	 
+	/* every even-process sends to bottom && odd-process sends to top */
 	switch((myrank/Px) % 2){	
 		case(0):
 			if(has_bottom_neighbour){
-				/* Sending to below */
+				/* Sending to bottom */
 				MPI_Send(to_bottom, cols*width, MPI_PACKED, myrank + Px, 0, MPI_COMM_WORLD);
 
-				/* Receiving from below */
+				/* Receiving from bottom */
 				MPI_Recv(from_bottom, cols*width, MPI_PACKED, myrank + Px, 0, MPI_COMM_WORLD, &status);
 			}
 			break;
@@ -267,7 +295,7 @@ int main(int argc, char *argv[])
 			break;
 	}
 
-	/* every even-process sends to top && odd-process sends to below*/
+	/* every even-process sends to top && odd-process sends to bottom*/
 	switch((myrank/Px) % 2){
 		case(0):
 			if(has_top_neighbour){
@@ -275,26 +303,30 @@ int main(int argc, char *argv[])
 				MPI_Send(to_top, cols*width, MPI_PACKED, myrank - Px, 0, MPI_COMM_WORLD);
 
 				/* Receiving from top */
-				MPI_Recv(&from_top, cols*width, MPI_PACKED, myrank - Px, 0, MPI_COMM_WORLD, &status);
+				MPI_Recv(from_top, cols*width, MPI_PACKED, myrank - Px, 0, MPI_COMM_WORLD, &status);
 			}
 			break;
 
 		case(1):
 			if(has_bottom_neighbour){
-				/* Receiving from below */
+				/* Receiving from bottom */
 				MPI_Recv(from_bottom, cols*width, MPI_PACKED, myrank + Px, 0, MPI_COMM_WORLD, &status);
 
-				/* Sending to below */
+				/* Sending to bottom */
 				MPI_Send(to_bottom, cols*width, MPI_PACKED, myrank + Px, 0, MPI_COMM_WORLD);
 			}
 			break;
 	}
-	
+
 /* stencil_computation */
-	for(int i=0; i<rows; i++){
-		for(int j=0; j<cols; j++){
-			compute(i, j);
+	for(int steps = 0; steps < num_time_steps; steps++){
+		for(int i=0; i<rows; i++){
+			for(int j=0; j<cols; j++){
+				compute(i, j);
+			}
 		}
+		/* as temp contains new values, we need to swap data and temp */
+		swap(&data, &temp); 
 	}
 
   	/* done with MPI */

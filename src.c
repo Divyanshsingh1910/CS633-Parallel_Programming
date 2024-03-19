@@ -214,10 +214,10 @@ void communicate(){
 			}
 			break;
 	}
-	print_array (from_bottom, rows*width);
-	print_array (from_top, rows*width);
-	print_array (from_left, rows*width);
-	print_array (from_right, rows*width);
+	print_array(from_bottom, rows*width);
+	print_array(from_top, rows*width);
+	print_array(from_left, rows*width);
+	print_array(from_right, rows*width);
 }
 
 void swap(double ***a, double ***b)
@@ -307,7 +307,7 @@ int main(int argc, char *argv[])
 		for(int j=0; j<cols; j++){
 			/*srand(seed*(myrank + 10));
 			data[i][j] = abs(rand() + (i*rand() + j*myrank))/100;*/
-			data[i][j] = 1;
+			data[i][j] = j;
 		}
 	}
 
@@ -334,6 +334,7 @@ int main(int argc, char *argv[])
 	}
 
 	double start_time, end_time;
+	
 	start_time = MPI_Wtime();
 /* stencil communication + computation*/
 	for(int steps = 0; steps < num_time_steps; steps++){
@@ -348,8 +349,10 @@ int main(int argc, char *argv[])
 	}
 	end_time = MPI_Wtime();
 	end_time -= start_time;
+	
 	double max_time;
 	MPI_Reduce (&end_time, &max_time, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+	
 	if (myrank == 0)
 		printf ("%lf\n", max_time);
 
@@ -360,12 +363,8 @@ int main(int argc, char *argv[])
 		MPI_Recv(NULL, 0, MPI_INT, myrank - 1, 0, MPI_COMM_WORLD, &status);
 	
 	for(int i = 0; i < rows; i++)
-		for(int j = 0; j < cols; j++){
-			// if(data[i][j] != 1)
-				// printf("myrank: %d, data[%d][%d] = %lf\n", myrank, i, j, data[i][j]);
-			fprintf(file, "%lf\n", data[i][j], i, j, myrank);
-			// fprintf(file, "%lf %d %d %d\n", data[i][j], i, j, myrank);
-		}
+		for(int j = 0; j < cols; j++)
+			fprintf(file, "%lf %d %d %d\n", data[i][j], i, j, myrank);
 
   	if(myrank < P - 1)
 		MPI_Send(NULL, 0, MPI_INT, myrank + 1, 0, MPI_COMM_WORLD);

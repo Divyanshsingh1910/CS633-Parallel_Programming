@@ -16,4 +16,3 @@ for size in [512, 2048]:
 		plt.boxplot ([srecv, pack], labels = plot_labels)
 		# plt.show() # not showing figures at the moment
 		plt.savefig (f"boxplot_{size}_stencil{stencil}.png")
-

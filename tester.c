@@ -44,9 +44,7 @@ void compute(int i, int j)
    	
 	for(int _ = 1; _ <= width; _++)
 		sum_neighbours += get_val(i + _, j, &nneighbours);
-	if(data[i][j] != 1)
-		printf("%d %d\n", i, j);
-	/*printf ("%d %d %d %lf %lf\n", nneighbours, i, j, data[i][j], sum_neighbours);*/
+
 	temp[i][j] = (data[i][j] + sum_neighbours)/(nneighbours + 1);
 }
 
@@ -83,12 +81,14 @@ int main(int argc, char *argv[])
 		temp[i] = (double *)malloc(cols*sizeof(double));
 	}
 
+	int side = (int) sqrt(N);
+
 	/* initializing the matrix with random values */
 	for(int i=0; i<rows; i++){
 		for(int j=0; j<cols; j++){
 			/*srand(seed*(myrank + 10));
 			data[i][j] = abs(rand() + (i*rand() + j*myrank))/100;*/
-			data[i][j] = 1;
+			data[i][j] = j%side;
 		}
 	}
 
@@ -101,8 +101,9 @@ int main(int argc, char *argv[])
 
 	FILE *file = fopen("output_expected.txt", "w");
 	for(int i = 0; i < rows; i++)
-		for(int j = 0; j < cols; j++)
-			fprintf(file, "%lf\n", data[i][j]);
-	
+		for(int j = 0; j < cols; j++){
+			int rank = (j/side) + (i/side)*Px;
+			fprintf(file, "%lf %d %d %d\n", data[i][j], i%(int)side, j%(int)side, rank);
+	}
 	return 0;
 }

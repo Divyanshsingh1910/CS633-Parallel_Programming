@@ -19,40 +19,34 @@ void swap(double ***a, double ***b)
 	*b = c;
 }
 
-double get_val(int i, int j)
+double get_val(int i, int j, int *nneighbours)
 {
-	return (i >= 0 && i < rows && j >= 0 && j < cols) ? data[i][j] : 0;
+	if(i >= 0 && i < rows && j >= 0 && j < cols){
+		(*nneighbours) = *nneighbours + 1;
+		return data[i][j];
+	}
+	return 0;
 }
 
 void compute(int i, int j)
 {
     double sum_neighbours = 0;
-	int nneighbours = 4*width;
+	int nneighbours = 0;
     
-	if(j == 0)
-        nneighbours -= width;
-	
-	if(j == cols - 1)
-        nneighbours -= width;
-	
-	if(i == 0)
-		nneighbours -= width;
-
-	if(i == rows - 1)
-		nneighbours -= width;
+   	for(int _ = 1; _ <= width; _++)
+		sum_neighbours += get_val(i, j - _, &nneighbours);
 
    	for(int _ = 1; _ <= width; _++)
-		sum_neighbours += get_val(i, j - _);
-
-   	for(int _ = 1; _ <= width; _++)
-		sum_neighbours += get_val(i, j + _);
+		sum_neighbours += get_val(i, j + _, &nneighbours);
    	
 	for(int _ = 1; _ <= width; _++)
-		sum_neighbours += get_val(i - _, j);
+		sum_neighbours += get_val(i - _, j, &nneighbours);
    	
 	for(int _ = 1; _ <= width; _++)
-		sum_neighbours += get_val(i + _, j);
-	
+		sum_neighbours += get_val(i + _, j, &nneighbours);
+	if(data[i][j] != 1)
+		printf("%d %d\n", i, j);
+	/*printf ("%d %d %d %lf %lf\n", nneighbours, i, j, data[i][j], sum_neighbours);*/
 	temp[i][j] = (data[i][j] + sum_neighbours)/(nneighbours + 1);
 }
 
@@ -67,17 +61,18 @@ int main(int argc, char *argv[])
 	Px = 3;	/* default value */	
 
 	/* all command line arguments provided */
-	if(argc == 6){
-		Px = atoi(argv[1]),
-		N = atoi(argv[2]),
-		num_time_steps = atoi(argv[3]),
-		seed = atoi(argv[4]),
-		stencil = atoi(argv[5]);
+	if(argc == 7){
+		P = atoi(argv[1]);
+		Px = atoi(argv[2]),
+		N = atoi(argv[3]),
+		num_time_steps = atoi(argv[4]),
+		seed = atoi(argv[5]),
+		stencil = atoi(argv[6]);
 	}
 
 	Py = P/Px;
-	rows = Px*sqrt(N),
-	cols = Py*sqrt(N);
+	rows = Py*sqrt(N),
+	cols = Px*sqrt(N);
 	width = stencil/4;
 	
 	/* allocating memory for the matrices */
@@ -97,9 +92,10 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	for(int i = 0; i < rows; i++){
-		for(int j = 0; j < cols; j++)
-			compute(i, j);
+	for(int steps = 0; steps < num_time_steps; steps++){
+		for(int i = 0; i < rows; i++)
+			for(int j = 0; j < cols; j++)
+				compute(i, j);
 		swap(&data, &temp);
 	}
 

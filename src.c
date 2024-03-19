@@ -361,11 +361,11 @@ int main(int argc, char *argv[])
 	
 	for(int i = 0; i < rows; i++)
 		for(int j = 0; j < cols; j++){
-			if(data[i][j] != 1)
+			// if(data[i][j] != 1)
 				// printf("myrank: %d, data[%d][%d] = %lf\n", myrank, i, j, data[i][j]);
 			fprintf(file, "%lf\n", data[i][j], i, j, myrank);
 			// fprintf(file, "%lf %d %d %d\n", data[i][j], i, j, myrank);
-			}
+		}
 
   	if(myrank < P - 1)
 		MPI_Send(NULL, 0, MPI_INT, myrank + 1, 0, MPI_COMM_WORLD);

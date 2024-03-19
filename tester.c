@@ -84,13 +84,9 @@ int main(int argc, char *argv[])
 	int side = (int) sqrt(N);
 
 	/* initializing the matrix with random values */
-	for(int i=0; i<rows; i++){
-		for(int j=0; j<cols; j++){
-			/*srand(seed*(myrank + 10));
-			data[i][j] = abs(rand() + (i*rand() + j*myrank))/100;*/
+	for(int i=0; i<rows; i++)
+		for(int j=0; j<cols; j++)
 			data[i][j] = j%side;
-		}
-	}
 
 	for(int steps = 0; steps < num_time_steps; steps++){
 		for(int i = 0; i < rows; i++)
@@ -100,10 +96,13 @@ int main(int argc, char *argv[])
 	}
 
 	FILE *file = fopen("output_expected.txt", "w");
+	int rank;
+
 	for(int i = 0; i < rows; i++)
 		for(int j = 0; j < cols; j++){
-			int rank = (j/side) + (i/side)*Px;
+			rank = (j/side) + (i/side)*Px;
 			fprintf(file, "%lf %d %d %d\n", data[i][j], i%(int)side, j%(int)side, rank);
-	}
+		}
+	
 	return 0;
 }

@@ -30,49 +30,19 @@ double	*to_left = NULL,	/* data sent to left neighbour*/
 		*to_top = NULL,		/* data sent to top neighbour*/
 		*to_bottom = NULL;	/* data sent to bottom neighbour*/
 
-double get_val(int i, int j, int *nneighbours)
+void fill_has_neighbours()
 {
-	if (i < 0) {
-		if (has_top_neighbour){
-			(*nneighbours) = *nneighbours + 1;
-			return from_top [cols*(i+width) + j];
-		}
-		else
-			return 0;
-	} else if (i >= rows) {
-		if (has_bottom_neighbour){
-			(*nneighbours) = *nneighbours + 1;
-			return from_bottom[cols*(i - rows) + j];
-		}
-		else
-			return 0;
-	} else if (j < 0) {
-        if (has_left_neighbour){
-			(*nneighbours) = *nneighbours + 1;
-			return
-				from_left[(j+width)*rows + i];
-		}
-		else return 0;
-	} else if (j >= cols) {
-        if (has_right_neighbour){
-			(*nneighbours) = *nneighbours + 1; return from_right[rows*(j-cols) + i];
-		}
-		else
-			return 0;
-	}
-
-	(*nneighbours) = *nneighbours + 1;
-	return data[i][j];
-}
-
-void print_array(double *array, int size)
-{
-	return ;
-	if(!array)
-		return;
-
-	for(int i = 0; i < size; i++)
-		printf("%d rank %lf\n", myrank, array[i]);
+    if(myrank%Px == 0) /* 0, 3, 6, 9 */
+        has_left_neighbour = false;
+    
+	if(myrank%Px == Px - 1) /* 2, 5, 8, 11 */
+        has_right_neighbour = false;
+    
+	if(myrank/Px == 0) /* 0, 1, 2 */
+        has_top_neighbour = false;
+    
+	if(myrank/Px == Py - 1) /* 9, 10, 11 */
+        has_bottom_neighbour = false;
 }
 
 void communicate(){
@@ -111,26 +81,26 @@ void communicate(){
 /* note: as each process has distinct neighbours, while sending and receiving messages, tag isn't necessary, that's why tag = 0 everywhere */
 
 /* along_x_communication */
-	/* every even-process sends to right neighbour && odd-process sends to left*/
 
+	/* every even-process sends to right neighbour && odd-process sends to left*/
 	switch((myrank%Px) % 2){
 		case(0):
 			if(has_right_neighbour){
 				/* Sending to right */
-				MPI_Send(to_right, rows*width*sizeof(double), MPI_PACKED, myrank + 1, 0, MPI_COMM_WORLD);
+				MPI_Send(to_right, rows*width * sizeof(double), MPI_PACKED, myrank + 1, 0, MPI_COMM_WORLD);
 
 				/* Receiving from right*/
-				MPI_Recv(from_right, rows*width, MPI_DOUBLE, myrank + 1, 0, MPI_COMM_WORLD, &status);
+				MPI_Recv(from_right, rows*width * sizeof(double), MPI_PACKED, myrank + 1, 0, MPI_COMM_WORLD, &status);
 			}
 			break;
 
 		case(1):
 			if(has_left_neighbour){
 				/* Receiving from left */
-				MPI_Recv(from_left, rows*width, MPI_DOUBLE, myrank - 1, 0, MPI_COMM_WORLD, &status);
+				MPI_Recv(from_left, rows*width * sizeof(double), MPI_PACKED, myrank - 1, 0, MPI_COMM_WORLD, &status);
 
 				/* Sending to left */
-				MPI_Send(to_left, rows*width*sizeof(double), MPI_PACKED, myrank - 1, 0, MPI_COMM_WORLD);
+				MPI_Send(to_left, rows*width * sizeof(double), MPI_PACKED, myrank - 1, 0, MPI_COMM_WORLD);
 			}
 			break;
 	}
@@ -140,20 +110,20 @@ void communicate(){
 		case(0):
 			if(has_left_neighbour){
 				/* Sending to left */
-				MPI_Send(to_left, rows*width*sizeof(double), MPI_PACKED, myrank - 1, 0, MPI_COMM_WORLD);
+				MPI_Send(to_left, rows*width * sizeof(double), MPI_PACKED, myrank - 1, 0, MPI_COMM_WORLD);
 
 				/* Receiving from left*/
-				MPI_Recv(from_left, rows*width, MPI_DOUBLE, myrank - 1, 0, MPI_COMM_WORLD, &status);
+				MPI_Recv(from_left, rows*width * sizeof(double), MPI_PACKED, myrank - 1, 0, MPI_COMM_WORLD, &status);
 			}
 			break;
 
 		case(1):
 			if(has_right_neighbour){
 				/* Receiving from right */
-				MPI_Recv(from_right, rows*width, MPI_DOUBLE, myrank + 1, 0, MPI_COMM_WORLD, &status);
+				MPI_Recv(from_right, rows*width * sizeof(double), MPI_PACKED, myrank + 1, 0, MPI_COMM_WORLD, &status);
 
 				/* Sending to right */
-				MPI_Send(to_right, rows*width*sizeof(double), MPI_PACKED, myrank + 1, 0, MPI_COMM_WORLD);
+				MPI_Send(to_right, rows*width * sizeof(double), MPI_PACKED, myrank + 1, 0, MPI_COMM_WORLD);
 			}
 			break;
 	}
@@ -174,7 +144,7 @@ void communicate(){
 		case(0):
 			if(has_bottom_neighbour){
 				/* Sending to bottom */
-				MPI_Send(to_bottom, cols*width*sizeof(double), MPI_PACKED, myrank + Px, 0, MPI_COMM_WORLD);
+				MPI_Send(to_bottom, cols*width * sizeof(double), MPI_PACKED, myrank + Px, 0, MPI_COMM_WORLD);
 
 				/* Receiving from bottom */
 				MPI_Recv(from_bottom, cols*width * sizeof(double), MPI_PACKED, myrank + Px, 0, MPI_COMM_WORLD, &status);
@@ -187,7 +157,7 @@ void communicate(){
 				MPI_Recv(from_top, cols*width * sizeof(double), MPI_PACKED, myrank - Px, 0, MPI_COMM_WORLD, &status);
 
 				/* Sending to top */
-				MPI_Send(to_top, cols*width*sizeof(double), MPI_PACKED, myrank - Px, 0, MPI_COMM_WORLD);
+				MPI_Send(to_top, cols*width * sizeof(double), MPI_PACKED, myrank - Px, 0, MPI_COMM_WORLD);
 			}
 			break;
 	}
@@ -197,7 +167,7 @@ void communicate(){
 		case(0):
 			if(has_top_neighbour){
 				/* Sending to top */
-				MPI_Send(to_top, cols*width*sizeof(double), MPI_PACKED, myrank - Px, 0, MPI_COMM_WORLD);
+				MPI_Send(to_top, cols*width * sizeof(double), MPI_PACKED, myrank - Px, 0, MPI_COMM_WORLD);
 
 				/* Receiving from top */
 				MPI_Recv(from_top, cols*width * sizeof(double), MPI_PACKED, myrank - Px, 0, MPI_COMM_WORLD, &status);
@@ -210,14 +180,10 @@ void communicate(){
 				MPI_Recv(from_bottom, cols*width * sizeof(double), MPI_PACKED, myrank + Px, 0, MPI_COMM_WORLD, &status);
 
 				/* Sending to bottom */
-				MPI_Send(to_bottom, cols*width*sizeof(double), MPI_PACKED, myrank + Px, 0, MPI_COMM_WORLD);
+				MPI_Send(to_bottom, cols*width * sizeof(double), MPI_PACKED, myrank + Px, 0, MPI_COMM_WORLD);
 			}
 			break;
 	}
-	print_array(from_bottom, rows*width);
-	print_array(from_top, rows*width);
-	print_array(from_left, rows*width);
-	print_array(from_right, rows*width);
 }
 
 void swap(double ***a, double ***b)
@@ -227,20 +193,41 @@ void swap(double ***a, double ***b)
 	*b = c;
 }
 
-void fill_has_neighbours()
+double get_val(int i, int j, int *nneighbours)
 {
-    if(myrank%Px == 0) /* 0, 3, 6, 9 */
-        has_left_neighbour = false;
-    
-	if(myrank%Px == Px - 1) /* 2, 5, 8, 11 */
-        has_right_neighbour = false;
-    
-	if(myrank/Px == 0) /* 0, 1, 2 */
-        has_top_neighbour = false;
-    
-	if(myrank/Px == Py - 1) /* 9, 10, 11 */
-        has_bottom_neighbour = false;
+	if (i < 0) {
+		if (has_top_neighbour){
+			(*nneighbours) = *nneighbours + 1;
+			return from_top [cols*(i+width) + j];
+		}
+		else
+			return 0;
+	} else if (i >= rows) {
+		if (has_bottom_neighbour){
+			(*nneighbours) = *nneighbours + 1;
+			return from_bottom[cols*(i - rows) + j];
+		}
+		else
+			return 0;
+	} else if (j < 0) {
+        if (has_left_neighbour){
+			(*nneighbours) = *nneighbours + 1;
+			return
+				from_left[(j+width)*rows + i];
+		}
+		else return 0;
+	} else if (j >= cols) {
+        if (has_right_neighbour){
+			(*nneighbours) = *nneighbours + 1; return from_right[rows*(j-cols) + i];
+		}
+		else
+			return 0;
+	}
+
+	(*nneighbours) = *nneighbours + 1;
+	return data[i][j];
 }
+
 void compute(int i, int j)
 {
     double sum_neighbours = 0;
@@ -305,8 +292,8 @@ int main(int argc, char *argv[])
 	/* initializing the matrix with random values */
 	for(int i=0; i<rows; i++){
 		for(int j=0; j<cols; j++){
-			/*srand(seed*(myrank + 10));
-			data[i][j] = abs(rand() + (i*rand() + j*myrank))/100;*/
+			/* srand(seed*(myrank + 10));
+			data[i][j] = abs(rand() + (i*rand() + j*myrank))/100; */
 			data[i][j] = j;
 		}
 	}
@@ -359,16 +346,10 @@ int main(int argc, char *argv[])
 	/* debugging */
 	FILE *file = fopen("output_actual.txt", "a");
 
-	if(myrank)
-		MPI_Recv(NULL, 0, MPI_INT, myrank - 1, 0, MPI_COMM_WORLD, &status);
-	
 	for(int i = 0; i < rows; i++)
 		for(int j = 0; j < cols; j++)
 			fprintf(file, "%lf %d %d %d\n", data[i][j], i, j, myrank);
-
-  	if(myrank < P - 1)
-		MPI_Send(NULL, 0, MPI_INT, myrank + 1, 0, MPI_COMM_WORLD);
-
+	
 	/* done with MPI */
   	MPI_Finalize();
 	return 0;

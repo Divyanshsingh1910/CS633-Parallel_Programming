@@ -1,5 +1,5 @@
 
 base:
 	mpicc src.c -lm
-	./a.out
+	mpirun -np 12 ./a.out 3 25 1 1 5
 

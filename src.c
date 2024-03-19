@@ -25,36 +25,29 @@ double	*from_left = NULL,		/* data received from left neighbour */
 		*from_top = NULL,		/* data received from top neighbour */
 		*from_bottom = NULL;	/* data received from bottom neighbour */
 
-double	*to_left = NULL,		/* data sent to left neighbour*/
-		*to_right = NULL,		/* data sent to right neighbour*/
-		*to_top = NULL,			/* data sent to top neighbour*/
-		*to_bottom = NULL;		/* data sent to bottom neighbour*/
+double	*to_left = NULL,	/* data sent to left neighbour*/
+		*to_right = NULL,	/* data sent to right neighbour*/
+		*to_top = NULL,		/* data sent to top neighbour*/
+		*to_bottom = NULL;	/* data sent to bottom neighbour*/
 
-void swap(double ***a, double ***b)
+double get_val(int i, int j, int *nneighbours)
 {
-	double **c = *a;
-	*a = *b;
-	*b = c;
-}
+	if (i < 0) {
+		if (has_top_neighbour) {(*nneighbours) = *nneighbours + 1; return from_top [cols*(i+width) + j]; }
+		else return 0;
+	} else if (i >= rows) {
+		if (has_bottom_neighbour) {(*nneighbours) = *nneighbours + 1; return from_bottom[cols*(i - rows) + j]; }
+		else return 0;
+	} else if (j < 0) {
+        if (has_left_neighbour) {(*nneighbours) = *nneighbours + 1; return from_left[(j+width)*rows + i]; }
+		else return 0;
+	} else if (j >= cols) {
+        if (has_right_neighbour) {(*nneighbours) = *nneighbours + 1; return from_right[rows*(j-cols) + i]; }
+		else return 0;
+	}
 
-void fill_has_neighbours()
-{
-    if(myrank%Px == 0) /* 0, 3, 6, 9 */
-        has_left_neighbour = false;
-    
-	if(myrank%Px == Px - 1) /* 2, 5, 8, 11 */
-        has_right_neighbour = false;
-    
-	if(myrank/Px == 0) /* 0, 1, 2 */
-        has_top_neighbour = false;
-    
-	if(myrank/Px == Py - 1) /* 9, 10, 11 */
-        has_bottom_neighbour = false;
-}
-
-double get_val(int i, int j)
-{
-	return (i >= 0 && i < rows && j >= 0 && j < cols) ? data[i][j] : 0;
+	(*nneighbours) = *nneighbours + 1;
+	return data[i][j];
 }
 
 void communicate(){
@@ -71,7 +64,7 @@ void communicate(){
 	
 	if(has_right_neighbour){
 		position = 0;
-		for(int j = cols - 1; j >= cols - width; j--)
+		for(int j = cols - width; j < cols; j++)
 			for(int i = 0; i < rows; i++)
 				MPI_Pack(&data[i][j], 1, MPI_DOUBLE, to_right, rows*width, &position, MPI_COMM_WORLD);
 	}
@@ -85,7 +78,7 @@ void communicate(){
 
 	if(has_bottom_neighbour){
 		position = 0;
-		for(int i = rows - 1; i >= rows - width; i--)
+		for(int i = rows - width; i < rows; i++)
 			for(int j = 0; j < cols; j++)
 				MPI_Pack(&data[i][j], 1, MPI_DOUBLE, to_bottom, cols*width, &position, MPI_COMM_WORLD);
 	}
@@ -198,50 +191,43 @@ void communicate(){
 	}
 }
 
+void swap(double ***a, double ***b)
+{
+	double **c = *a;
+	*a = *b;
+	*b = c;
+}
+
+void fill_has_neighbours()
+{
+    if(myrank%Px == 0) /* 0, 3, 6, 9 */
+        has_left_neighbour = false;
+    
+	if(myrank%Px == Px - 1) /* 2, 5, 8, 11 */
+        has_right_neighbour = false;
+    
+	if(myrank/Px == 0) /* 0, 1, 2 */
+        has_top_neighbour = false;
+    
+	if(myrank/Px == Py - 1) /* 9, 10, 11 */
+        has_bottom_neighbour = false;
+}
 void compute(int i, int j)
 {
     double sum_neighbours = 0;
-	int nneighbours = 4*width;
-    
-	if(j == 0)
-		if(has_left_neighbour)
-			for(int _ = 0; _ < width; _++)
-				sum_neighbours += from_left[i + _*rows];
-		else
-        	nneighbours -= width;
-	
-	if(j == cols - 1)
-		if(has_right_neighbour)
-			for(int _ = 0; _ < width; _++)
-				sum_neighbours += from_right[i + _*rows];
-		else
-        	nneighbours -= width;
-	
-	if(i == 0)
-		if(has_top_neighbour)
-			for(int _ = 0; _ < width; _++)
-				sum_neighbours += from_top[j + _*cols];
-		else
-			nneighbours -= width;
-
-	if(i == rows - 1)
-		if(has_bottom_neighbour)
-			for(int _ = 0; _ < width; _++)
-				sum_neighbours += from_bottom[j + _*cols];
-        else
-			nneighbours -= width;
+	int nneighbours = 0;
 
    	for(int _ = 1; _ <= width; _++)
-		sum_neighbours += get_val(i, j - _);
+		sum_neighbours += get_val(i, j - _, &nneighbours);
 
    	for(int _ = 1; _ <= width; _++)
-		sum_neighbours += get_val(i, j + _);
+		sum_neighbours += get_val(i, j + _, &nneighbours);
    	
 	for(int _ = 1; _ <= width; _++)
-		sum_neighbours += get_val(i - _, j);
+		sum_neighbours += get_val(i - _, j, &nneighbours);
    	
 	for(int _ = 1; _ <= width; _++)
-		sum_neighbours += get_val(i + _, j);
+		sum_neighbours += get_val(i + _, j, &nneighbours);
 	
 	temp[i][j] = (data[i][j] + sum_neighbours)/(nneighbours + 1);
 }
@@ -250,7 +236,7 @@ int main(int argc, char *argv[])
 {
 	int N = 512*512,		/* number of data points per process */
 	P = 12,					/* total number of processes */
-	num_time_steps = 10,	/* number of steps */
+	num_time_steps = 1,	/* number of steps */
 	seed = 42,
 	stencil = 5;
 	
@@ -332,6 +318,7 @@ int main(int argc, char *argv[])
 
 	/* debugging */
 	FILE *file = fopen("output_actual.txt", "a");
+
 	if(myrank)
 		MPI_Recv(NULL, 0, MPI_INT, myrank - 1, 0, MPI_COMM_WORLD, &status);
 	

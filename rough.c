@@ -103,7 +103,7 @@ int main(int argc, char *argv[])
 		swap(&data, &temp);
 	}
 
-	FILE *file = fopen("output_expected.txt", "a");
+	FILE *file = fopen("output_expected.txt", "w");
 	for(int i = 0; i < rows; i++)
 		for(int j = 0; j < cols; j++)
 			fprintf(file, "%lf\n", data[i][j]);

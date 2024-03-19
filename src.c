@@ -117,7 +117,6 @@ void compute(int i, int j)
 
 int main(int argc, char *argv[]) 
 {
-	printf("argc = %d\n", argc);
 	int N = 512*512,		/* number of data points per process */
 	P = 12,					/* total number of processes */
 	num_time_steps = 10,	/* number of steps */
@@ -135,15 +134,16 @@ int main(int argc, char *argv[])
 		stencil = atoi(argv[5]);
 	}
 	
+	/* initialize MPI */
+	MPI_Init (&argc, &argv);
+	MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
+	MPI_Comm_size(MPI_COMM_WORLD, &P);
+
 	Py = P/Px;
 	rows = cols = sqrt(N);
 	width = stencil/4;
 
-	/* initialize MPI */
-	MPI_Init (&argc, &argv);
 	MPI_Status status;
-	MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
-
 	
 	/* filling neighbours */
 	fill_has_neighbours();

@@ -196,35 +196,36 @@ void swap(double ***a, double ***b)
 double get_val(int i, int j, int *nneighbours)
 {
 	if (i < 0) {
-		if (has_top_neighbour){
-			(*nneighbours) = *nneighbours + 1;
+		if (has_top_neighbour) {
+			(*nneighbours) = (*nneighbours) + 1;
 			return from_top [cols*(i+width) + j];
 		}
 		else
 			return 0;
 	} else if (i >= rows) {
-		if (has_bottom_neighbour){
-			(*nneighbours) = *nneighbours + 1;
+		if (has_bottom_neighbour) {
+			(*nneighbours) = (*nneighbours) + 1;
 			return from_bottom[cols*(i - rows) + j];
 		}
 		else
 			return 0;
 	} else if (j < 0) {
-        if (has_left_neighbour){
-			(*nneighbours) = *nneighbours + 1;
-			return
-				from_left[(j+width)*rows + i];
+        if (has_left_neighbour) {
+			(*nneighbours) = (*nneighbours) + 1;
+			return from_left[(j+width)*rows + i];
 		}
-		else return 0;
+		else
+			return 0;
 	} else if (j >= cols) {
-        if (has_right_neighbour){
-			(*nneighbours) = *nneighbours + 1; return from_right[rows*(j-cols) + i];
+        if (has_right_neighbour) {
+			(*nneighbours) = (*nneighbours) + 1;
+			return from_right[rows*(j-cols) + i];
 		}
 		else
 			return 0;
 	}
 
-	(*nneighbours) = *nneighbours + 1;
+	(*nneighbours) = (*nneighbours) + 1;
 	return data[i][j];
 }
 
@@ -250,22 +251,23 @@ void compute(int i, int j)
 
 int main(int argc, char *argv[]) 
 {
-	int N = 512*512,		/* number of data points per process */
-	P = 12,					/* total number of processes */
-	num_time_steps = 1,	/* number of steps */
-	seed = 42,
-	stencil = 5;
+	int N,				/* number of data points per process */
+		P,				/* total number of processes */
+		num_time_steps,	/* number of steps */
+		seed,
+		stencil;
 	
-	Px = 3;	/* default value */	
-
-	/* all command line arguments provided */
-	if(argc == 6){
-		Px = atoi(argv[1]),
-		N = atoi(argv[2]),
-		num_time_steps = atoi(argv[3]),
-		seed = atoi(argv[4]),
-		stencil = atoi(argv[5]);
+	if(argc != 6){
+		printf("Error: wrong number of arguments provided\n");
+		return 0;
 	}
+
+	/* command line arguments */
+	Px = atoi(argv[1]),
+	N = atoi(argv[2]),
+	num_time_steps = atoi(argv[3]),
+	seed = atoi(argv[4]),
+	stencil = atoi(argv[5]);
 	
 	/* initialize MPI */
 	MPI_Init (&argc, &argv);
@@ -276,8 +278,6 @@ int main(int argc, char *argv[])
 	rows = cols = sqrt(N);
 	width = stencil/4;
 
-	MPI_Status status;
-	
 	/* filling neighbours */
 	fill_has_neighbours();
 	
@@ -292,13 +292,11 @@ int main(int argc, char *argv[])
 	/* initializing the matrix with random values */
 	for(int i=0; i<rows; i++){
 		for(int j=0; j<cols; j++){
-			/* srand(seed*(myrank + 10));
-			data[i][j] = abs(rand() + (i*rand() + j*myrank))/100; */
-			data[i][j] = j;
+			srand(seed*(myrank + 10));
+			data[i][j] = abs(rand() + (i*rand() + j*myrank))/100;
 		}
 	}
 
-	int position = 0;
 	/* allocating memory for data going to send to/receive from neighbours */
 	if(has_left_neighbour){
 		from_left	= (double *)malloc(rows*width * sizeof(double));
@@ -320,10 +318,11 @@ int main(int argc, char *argv[])
 		to_bottom	= (double *)malloc(cols*width * sizeof(double));
 	}
 
+/* stencil communication + computation*/
+	
 	double start_time, end_time;
 	
 	start_time = MPI_Wtime();
-/* stencil communication + computation*/
 	for(int steps = 0; steps < num_time_steps; steps++){
 		communicate();
 		for(int i=0; i<rows; i++){
@@ -335,6 +334,7 @@ int main(int argc, char *argv[])
 		swap(&data, &temp); 
 	}
 	end_time = MPI_Wtime();
+
 	end_time -= start_time;
 	
 	double max_time;
@@ -343,13 +343,6 @@ int main(int argc, char *argv[])
 	if (myrank == 0)
 		printf ("%lf\n", max_time);
 
-	/* debugging */
-	FILE *file = fopen("output_actual.txt", "a");
-
-	for(int i = 0; i < rows; i++)
-		for(int j = 0; j < cols; j++)
-			fprintf(file, "%lf %d %d %d\n", data[i][j], i, j, myrank);
-	
 	/* done with MPI */
   	MPI_Finalize();
 	return 0;

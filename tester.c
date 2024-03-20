@@ -50,27 +50,30 @@ void compute(int i, int j)
 
 int main(int argc, char *argv[])
 {
-	int N = 512*512,		/* number of data points per process */
-	P = 12,					/* total number of processes */
-	num_time_steps = 10,	/* number of steps */
-	seed = 42,
-	stencil = 5;
+	int N,				/* number of data points per process */
+		P,				/* total number of processes */
+		num_time_steps,	/* number of steps */
+		seed,
+		stencil,
+		side;
 	
-	Px = 3;	/* default value */	
-
 	/* all command line arguments provided */
-	if(argc == 7){
-		P = atoi(argv[1]);
-		Px = atoi(argv[2]),
-		N = atoi(argv[3]),
-		num_time_steps = atoi(argv[4]),
-		seed = atoi(argv[5]),
-		stencil = atoi(argv[6]);
+	if(argc != 7){
+		printf("Error: wrong number of arguments provided\n");
+		return 0;
 	}
 
+	P = atoi(argv[1]);
+	Px = atoi(argv[2]),
+	N = atoi(argv[3]),
+	num_time_steps = atoi(argv[4]),
+	seed = atoi(argv[5]),
+	stencil = atoi(argv[6]);
+
 	Py = P/Px;
-	rows = Py*sqrt(N),
-	cols = Px*sqrt(N);
+	side = sqrt(N);
+	rows = Py*side,
+	cols = Px*side;
 	width = stencil/4;
 	
 	/* allocating memory for the matrices */
@@ -80,8 +83,6 @@ int main(int argc, char *argv[])
 		data[i] = (double *)malloc(cols*sizeof(double));
 		temp[i] = (double *)malloc(cols*sizeof(double));
 	}
-
-	int side = (int) sqrt(N);
 
 	/* initializing the matrix with random values */
 	for(int i=0; i<rows; i++)

@@ -1,6 +1,7 @@
 rm -f output*
 mpicc src.c -lm
 mpirun -np 12 ./a.out 3 64 1 1 5
+rm a.out
 gcc tester.c -lm
 ./a.out 12 3 64 1 1 5
 rm a.out

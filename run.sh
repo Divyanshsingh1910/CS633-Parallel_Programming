@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo 262144 5
+echo N = 512*512 stencil = 5
 for i in {1..5}; do
     rm -f output*
     mpicc src.c -lm
@@ -8,7 +8,7 @@ for i in {1..5}; do
     rm a.out
 done
 
-echo 262144 9
+echo N = 512*512 stencil = 9
 for i in {1..5}; do
     rm -f output*
     mpicc src.c -lm
@@ -16,7 +16,7 @@ for i in {1..5}; do
     rm a.out
 done
 
-echo 4194304 5
+echo N = 2048*2048 stencil = 5
 for i in {1..5}; do
     rm -f output*
     mpicc src.c -lm
@@ -24,7 +24,7 @@ for i in {1..5}; do
     rm a.out
 done
 
-echo 4194304 9
+echo N = 2048*2048 stencil = 9
 for i in {1..5}; do
     rm -f output*
     mpicc src.c -lm

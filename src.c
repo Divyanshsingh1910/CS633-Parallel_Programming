@@ -212,14 +212,14 @@ void communicate(){
 								myrank - Px, 0, MPI_COMM_WORLD, &status);
 					}
 					MPI_Scatter(scatter_buf, cols*width*sizeof(double), MPI_PACKED,
-							from_top, cols*width*sizeof(double), MPI_PACKED,
+							from_bottom, cols*width*sizeof(double), MPI_PACKED,
 							0, localcomm);
 				}
 				break;
 
 			case(1): 
 				if (has_top_neighbour) {
-					MPI_Gather(to_bottom, cols*width*sizeof(double), MPI_PACKED,
+					MPI_Gather(to_top, cols*width*sizeof(double), MPI_PACKED,
 						   	gather_buf, cols*width*sizeof(double), MPI_PACKED,
 						   	0, localcomm);
 					if (is_leader) {
@@ -239,7 +239,7 @@ void communicate(){
 		switch ((myrank/Px)%2) {
 			case (0):
 				if (has_top_neighbour) {
-					MPI_Gather(to_bottom, cols*width*sizeof(double), MPI_PACKED,
+					MPI_Gather(to_top, cols*width*sizeof(double), MPI_PACKED,
 						   	gather_buf, cols*width*sizeof(double), MPI_PACKED,
 						   	0, localcomm);
 					if (is_leader) {
@@ -257,7 +257,7 @@ void communicate(){
 					
 			case (1):
 				if (has_top_neighbour) {
-					MPI_Gather(to_bottom, cols*width*sizeof(double), MPI_PACKED,
+					MPI_Gather(to_top, cols*width*sizeof(double), MPI_PACKED,
 						   	gather_buf, cols*width*sizeof(double), MPI_PACKED,
 						   	0, localcomm);
 					if (is_leader) {
@@ -405,6 +405,7 @@ int main(int argc, char *argv[])
 		from_bottom	= (double *)malloc(cols*width * sizeof(double));
 		to_bottom	= (double *)malloc(cols*width * sizeof(double));
 	}
+	printf ("%p\n", to_bottom);
 	/* initializing the matrix with random values */
 	for(int i=0; i<rows; i++){
 		for(int j=0; j<cols; j++){

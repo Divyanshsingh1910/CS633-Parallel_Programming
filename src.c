@@ -150,7 +150,7 @@ void communicate(){
 	 */
 	 
 	/* every even-process sends to bottom && odd-process sends to top */
-	if (leader == 0) {
+	if (!leader) {
 		switch((myrank/Px) % 2){	
 			case(0):
 				if(has_bottom_neighbour){
@@ -198,7 +198,7 @@ void communicate(){
 		
 		}
 	}
-	else if (leader == 1) {
+	else {
 		switch ((myrank/Px)%2) {
 			case(0):
 				if (has_bottom_neighbour) {
@@ -207,9 +207,9 @@ void communicate(){
 						   	0, localcomm);
 					if (is_leader){ // leader
 						MPI_Send(gather_buf, cols*width*sizeof(double), MPI_PACKED,
-								myrank - Px, 0, MPI_COMM_WORLD);
+								myrank + Px, 0, MPI_COMM_WORLD);
 						MPI_Recv(scatter_buf, cols*width*sizeof(double), MPI_PACKED,
-								myrank - Px, 0, MPI_COMM_WORLD, &status);
+								myrank + Px, 0, MPI_COMM_WORLD, &status);
 					}
 					MPI_Scatter(scatter_buf, cols*width*sizeof(double), MPI_PACKED,
 							from_bottom, cols*width*sizeof(double), MPI_PACKED,
@@ -224,10 +224,10 @@ void communicate(){
 						   	0, localcomm);
 					if (is_leader) {
 						MPI_Recv(scatter_buf, cols*width*sizeof(double), MPI_PACKED,
-								myrank + Px, 0, MPI_COMM_WORLD, &status
+								myrank - Px, 0, MPI_COMM_WORLD, &status
 								);
 						MPI_Send(gather_buf, cols*width*sizeof(double), MPI_PACKED,
-								myrank+ Px, 0, MPI_COMM_WORLD);
+								myrank - Px, 0, MPI_COMM_WORLD);
 					}
 					MPI_Scatter(scatter_buf, cols*width*sizeof(double), MPI_PACKED,
 							from_top, cols*width*sizeof(double), MPI_PACKED,
@@ -244,10 +244,10 @@ void communicate(){
 						   	0, localcomm);
 					if (is_leader) {
 						MPI_Recv(scatter_buf, cols*width*sizeof(double), MPI_PACKED,
-								myrank + Px, 0, MPI_COMM_WORLD, &status
+								myrank - Px, 0, MPI_COMM_WORLD, &status
 								);
 						MPI_Send(gather_buf, cols*width*sizeof(double), MPI_PACKED,
-								myrank+ Px, 0, MPI_COMM_WORLD);
+								myrank - Px, 0, MPI_COMM_WORLD);
 					}
 					MPI_Scatter(scatter_buf, cols*width*sizeof(double), MPI_PACKED,
 							from_top, cols*width*sizeof(double), MPI_PACKED,
@@ -256,13 +256,13 @@ void communicate(){
 				break;
 					
 			case (1):
-				if (has_top_neighbour) {
+				if (has_bottom_neighbour) {
 					MPI_Gather(to_top, cols*width*sizeof(double), MPI_PACKED,
 						   	gather_buf, cols*width*sizeof(double), MPI_PACKED,
 						   	0, localcomm);
 					if (is_leader) {
 						MPI_Send(gather_buf, cols*width*sizeof(double), MPI_PACKED,
-								myrank+ Px, 0, MPI_COMM_WORLD);
+								myrank + Px, 0, MPI_COMM_WORLD);
 						MPI_Recv(scatter_buf, cols*width*sizeof(double), MPI_PACKED,
 								myrank + Px, 0, MPI_COMM_WORLD, &status
 								);
@@ -405,7 +405,7 @@ int main(int argc, char *argv[])
 		from_bottom	= (double *)malloc(cols*width * sizeof(double));
 		to_bottom	= (double *)malloc(cols*width * sizeof(double));
 	}
-	printf ("%p\n", to_bottom);
+	
 	/* initializing the matrix with random values */
 	for(int i=0; i<rows; i++){
 		for(int j=0; j<cols; j++){
@@ -415,7 +415,7 @@ int main(int argc, char *argv[])
 	}
 
 /* stencil communication + computation*/
-#define DEBUG 0
+#define DEBUG 1
 	
 	double start_time, end_time;
 	

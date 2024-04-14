@@ -347,7 +347,7 @@ int main(int argc, char *argv[])
 		seed,
 		stencil;
 	
-	if(argc != 6){
+	if(argc != 5){
 		printf("Error: wrong number of arguments provided\n");
 		return 0;
 	}
@@ -357,7 +357,7 @@ int main(int argc, char *argv[])
 	N = atoi(argv[2]),
 	num_time_steps = atoi(argv[3]),
 	seed = atoi(argv[4]),
-	// stencil = atoi(argv[5]); // only for assignment 1
+	stencil = 5;
 	
 	/* initialize MPI */
 	MPI_Init (&argc, &argv);
@@ -369,17 +369,18 @@ int main(int argc, char *argv[])
 
 	Py = P/Px;
 	rows = cols = sqrt(N);
-	// width = stencil/4; // for assignment 1
-	width = 1;
+	width = stencil/4;
 
 	/* filling neighbours */
 	fill_has_neighbours();
 	
-	/* allocating memory for the matrices */
+	/* allocating memory for the matrices and gather/scatter buffers */
 	data = (double **)malloc(rows*sizeof(double*));
 	temp = (double **)malloc(rows*sizeof(double*));
+	
 	gather_buf = (double *) malloc (Px * cols * width * sizeof(double));
 	scatter_buf = (double *) malloc (Px * cols * width * sizeof(double));
+	
 	for(int i=0; i<rows; i++){
 		data[i] = (double *)malloc(cols*sizeof(double));
 		temp[i] = (double *)malloc(cols*sizeof(double));
@@ -415,27 +416,19 @@ int main(int argc, char *argv[])
 	}
 
 /* stencil communication + computation*/
-#define DEBUG 1
 	
 	double start_time, end_time;
 	
-	// with leader
+	/* with leader */
 	leader = 1;
 	start_time = MPI_Wtime();
 	for(int steps = 0; steps < num_time_steps; steps++){
-		#if DEBUG
-		printf ("rank %d line 419\n", myrank);
-		#endif
-
 		communicate();
 		for(int i=0; i<rows; i++){
 			for(int j=0; j<cols; j++){
 				compute(i, j);
 			}
 		}
-		#if DEBUG
-		printf ("rank %d line 424\n", myrank);
-		#endif
 		/* as temp contains new values, we need to swap data and temp */
 		swap(&data, &temp); 
 	}
@@ -449,23 +442,16 @@ int main(int argc, char *argv[])
 	if (myrank == 0)
 		printf ("Time with leader = %lf\n", max_time);
 
-	// without leader
+	/* without leader */
 	leader = 0;
 	start_time = MPI_Wtime();
 	for(int steps = 0; steps < num_time_steps; steps++){
-		#if DEBUG
-		printf ("rank %d line 419\n", myrank);
-		#endif
-
 		communicate();
 		for(int i=0; i<rows; i++){
 			for(int j=0; j<cols; j++){
 				compute(i, j);
 			}
 		}
-		#if DEBUG
-		printf ("rank %d line 424\n", myrank);
-		#endif
 		/* as temp contains new values, we need to swap data and temp */
 		swap(&data, &temp); 
 	}
@@ -476,12 +462,12 @@ int main(int argc, char *argv[])
 	max_time;
 	MPI_Reduce (&end_time, &max_time, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
 	
-	if (myrank == 0)
+	if (myrank == 0){
 		printf ("Time without leader = %lf\n", max_time);
+		printf ("Data = %lf\n", data[0][0]);
+	}
 
 	/* done with MPI */
-	if (myrank == 0)
-		printf ("Data = %lf\n", data[0][0]);
   	MPI_Finalize();
 	return 0;
 }
